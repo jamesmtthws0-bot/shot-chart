@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Arc Shot Chart</title>
+<meta name="description" content="Log makes from 10 spots around the arc and find the spots that need work.">
+<meta name="theme-color" content="#eef1f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f151b" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Shot Chart">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<style>
+@font-face{font-family:"Barlow Condensed";font-weight:500;font-display:swap;src:url(fonts/barlow-condensed-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-weight:600;font-display:swap;src:url(fonts/barlow-condensed-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-weight:700;font-display:swap;src:url(fonts/barlow-condensed-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow";font-weight:400;font-display:swap;src:url(fonts/barlow-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow";font-weight:500;font-display:swap;src:url(fonts/barlow-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow";font-weight:600;font-display:swap;src:url(fonts/barlow-latin-600-normal.woff2) format("woff2")}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;color-scheme:light}
+body{margin:0}
+[hidden]{display:none!important}
+</style>
+<style>
+/* Layout: one phone-width column, court diagram up top, big keypad below, tab bar pinned to the bottom. */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --fg:#14202b; --muted:#5b6876; --line:#cdd5de;
+  --court:#ead9bd; --courtline:#9a7b52; --accent:#e3631b; --accent-ink:#ffffff;
+  --good:#2e9d5b; --mid:#d39a1c; --bad:#d4483b;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f151b; --surface:#18212a; --fg:#e8edf2; --muted:#93a1b0; --line:#2b3846;
+  --court:#2b2318; --courtline:#a3824f; --accent:#ff7a33; --accent-ink:#1a0d04;
+  --good:#4cc27b; --mid:#e3b23c; --bad:#ef6457; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f151b; --surface:#18212a; --fg:#e8edf2; --muted:#93a1b0; --line:#2b3846;
+  --court:#2b2318; --courtline:#a3824f; --accent:#ff7a33; --accent-ink:#1a0d04;
+  --good:#4cc27b; --mid:#e3b23c; --bad:#ef6457; color-scheme:dark}
+html,body{background:var(--bg);color:var(--fg)}
+button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+body{font-family:var(--body);font-size:16px;line-height:1.45;padding-inline:16px;padding-block:0}
+.wrap{max-width:520px;margin:0 auto;padding-block:calc(14px + env(safe-area-inset-top,0px)) calc(110px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:0;text-wrap:balance}
+h1{font-size:26px;text-transform:uppercase;letter-spacing:.04em}
+h2{font-size:20px;text-transform:uppercase;letter-spacing:.05em}
+.top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.status{font-size:13px;color:var(--muted)}
+.num{font-family:var(--display);font-variant-numeric:tabular-nums}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.between{justify-content:space-between}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.iconbtn{width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:22px;line-height:1}
+.datebox{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center}
+.datebox .d{font-family:var(--display);font-size:22px;font-weight:600}
+.datebox input{font:inherit;font-size:13px;color:var(--muted);background:transparent;border:0;text-align:center}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:10px;font-family:var(--display);font-size:18px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;display:flex;flex-direction:column;align-items:center;gap:0}
+.seg button small{font-family:var(--body);font-size:12px;font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.seg button[aria-pressed="true"] small{color:var(--bg);opacity:.75}
+.seg3{grid-template-columns:repeat(3,1fr)}
+.seg3 button{font-size:15px;padding:8px}
+svg.court{width:100%;height:auto;display:block;max-width:100%}
+.court .floor{fill:var(--court)}
+.court .ln{fill:none;stroke:var(--courtline);stroke-width:2}
+.court .spot{cursor:pointer}
+.court .spot circle{stroke-width:2.5}
+.court .spot text{font-family:var(--display);font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.court .lbl{font-family:var(--display);font-size:11px;fill:var(--courtline);text-anchor:middle;font-weight:600}
+.tally{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.tally .big{font-size:34px;font-weight:700;line-height:1}
+.tally .sub{color:var(--muted);font-size:14px}
+.prompt{font-family:var(--display);font-size:18px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.prompt b{color:var(--accent)}
+.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.pad button{height:58px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-family:var(--display);font-size:28px;font-weight:700;font-variant-numeric:tabular-nums}
+.pad button:active{transform:scale(.97)}
+.pad button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.pad button.clear{font-size:16px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.done{border-left:0;background:var(--fg);color:var(--bg);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:4px}
+.done .num{font-size:28px;font-weight:700}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.legend{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.legend .bar{flex:1;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--bad),var(--mid),var(--good))}
+.focus{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.focus li{display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:center;padding:10px;border-radius:10px;background:var(--bg)}
+.focus .tag{font-family:var(--display);font-size:22px;font-weight:700;text-align:center}
+.pill{font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.pill.bad{background:color-mix(in srgb,var(--bad) 18%,transparent);color:var(--bad)}
+.pill.mid{background:color-mix(in srgb,var(--mid) 22%,transparent);color:var(--fg)}
+.pill.good{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:7px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-family:var(--display);font-weight:600;text-transform:uppercase;letter-spacing:.05em;font-size:13px;color:var(--muted)}
+th:first-child,td:first-child{text-align:left}
+tr.sel td{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+tbody tr{cursor:pointer}
+.up{color:var(--good)} .down{color:var(--bad)}
+svg.chart{width:100%;height:auto;display:block}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .axis{font-family:var(--body);font-size:10px;fill:var(--muted)}
+.chart .dot{fill:var(--muted);opacity:.55}
+.chart .avg{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.chart .area{fill:var(--accent);opacity:.1}
+.chart .end{fill:var(--accent)}
+.chartcap{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.linkbtn{border:0;background:none;color:var(--accent);font-weight:600;padding:0;font-size:14px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.split div{background:var(--bg);border-radius:10px;padding:10px;display:flex;flex-direction:column}
+.split .num{font-size:26px;font-weight:700}
+.hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.hist li{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--line)}
+.hist li:last-child{border-bottom:0}
+.hist .dt{font-weight:600}
+.hist button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 10px;font-family:var(--display);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;min-width:74px}
+.hist button .muted{font-size:12px}
+.bk{height:48px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-family:var(--display);font-size:17px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.bk:first-child{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.empty{text-align:center;padding:24px 8px;color:var(--muted)}
+.empty strong{display:block;color:var(--fg);font-family:var(--display);font-size:20px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.note{font-size:13px;color:var(--muted);margin:0}
+.warn{font-size:13px;background:color-mix(in srgb,var(--mid) 18%,transparent);border-radius:10px;padding:8px 10px}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:6px 16px calc(6px + env(safe-area-inset-bottom,0px));z-index:5}
+nav.tabs .in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+nav.tabs button{border:0;background:transparent;padding:10px 4px;border-radius:10px;font-family:var(--display);font-size:17px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+nav.tabs button[aria-current="page"]{color:var(--fg);background:var(--bg)}
+nav.tabs button[aria-current="page"]::before{content:"";display:block;width:18px;height:3px;border-radius:2px;background:var(--accent);margin:0 auto 4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="top"><h1>Arc Shot Chart</h1><span class="status" id="status"></span></div>
+  <div id="view"></div>
+</div>
+<nav class="tabs" aria-label="Sections"><div class="in">
+  <button id="tab-log" data-tab="log" aria-current="page">Log</button>
+  <button id="tab-progress" data-tab="progress">Progress</button>
+  <button id="tab-history" data-tab="history">History</button>
+</div></nav>
+
+<script>
+(function(){
+"use strict";
+const SPOTS = 10, SHOTS = 10;
+const SPOT_NAMES = ["Left corner","Left short wing","Left wing","Left slot","Left top","Right top","Right slot","Right wing","Right short wing","Right corner"];
+
+// ---------- state ----------
+const S = {
+  tab: "log",
+  sets: new Map(),            // id -> {date,set,makes:[...]}
+  date: todayStr(),
+  setNo: 1,
+  spot: 0,
+  setPicked: false,
+  range: 14,
+  focusSpot: null,
+  loaded: false,
+  storeKind: null,
+};
+const dirty = new Map();      // id -> true while a local edit is unsaved
+
+// ---------- dates ----------
+function todayStr(){ return toStr(new Date()); }
+function toStr(d){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),dd=String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${dd}`; }
+function parse(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
+function addDays(s,n){ const d=parse(s); d.setDate(d.getDate()+n); return toStr(d); }
+function nice(s){ const t=todayStr(); if(s===t) return "Today"; if(s===addDays(t,-1)) return "Yesterday";
+  return parse(s).toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"}); }
+function short(s){ return parse(s).toLocaleDateString(undefined,{day:"numeric",month:"short"}); }
+
+// ---------- storage ----------
+let store = null;
+const LS_KEY = "arc-shot-chart-sets";
+function lsLoad(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||"{}"); }catch(e){ return {}; } }
+function lsSave(obj){ try{ localStorage.setItem(LS_KEY, JSON.stringify(obj)); return true; }catch(e){ return false; } }
+
+async function initStore(){
+  S.storeKind = "local";
+  Object.entries(lsLoad()).forEach(([id,v])=>{ if(v && Array.isArray(v.makes)) S.sets.set(id,v); });
+  store = {
+    save: async (id,body)=>{ const o=lsLoad(); o[id]=body; if(!lsSave(o)) throw {code:"local_fail"}; },
+    remove: async (id)=>{ const o=lsLoad(); delete o[id]; lsSave(o); },
+  };
+  try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+  S.loaded = true; setStatus(S.sets.size ? "Saved on this phone" : ""); onLoaded();
+}
+
+let firstLoad = true;
+function onLoaded(){
+  if(firstLoad){ firstLoad=false; pickDefaultSet(); }
+  render();
+}
+function pickDefaultSet(){
+  const s1 = S.sets.get(idFor(S.date,1));
+  S.setNo = (s1 && filled(s1.makes)===SPOTS) ? 2 : 1;
+  S.spot = firstEmpty(current().makes);
+}
+
+// one write at a time per doc; coalesce bursts
+const timers = new Map(), inflight = new Map(), seq = new Map();
+function queueSave(id){
+  dirty.set(id,true); seq.set(id,(seq.get(id)||0)+1); setStatus("Saving…");
+  clearTimeout(timers.get(id));
+  timers.set(id, setTimeout(()=>flush(id), 450));
+}
+async function flush(id){
+  if(inflight.get(id)){ timers.set(id,setTimeout(()=>flush(id),300)); return; }
+  const rec = S.sets.get(id), mySeq = seq.get(id);
+  inflight.set(id,true);
+  try{
+    if(!rec || filled(rec.makes)===0) await store.remove(id);
+    else await store.save(id,{date:rec.date,set:rec.set,makes:rec.makes,updatedAt:Date.now()});
+    if(seq.get(id)===mySeq) dirty.delete(id);
+    setStatus("Saved on this phone");
+  }catch(e){
+    setStatus("Couldn't save. Phone storage may be full or blocked.");
+  }finally{ inflight.set(id,false); }
+}
+
+// ---------- data helpers ----------
+function idFor(date,setNo){ return `${date}_${setNo}`; }
+function current(){
+  const id = idFor(S.date,S.setNo);
+  return S.sets.get(id) || {date:S.date,set:S.setNo,makes:Array(SPOTS).fill(null)};
+}
+function filled(m){ return m.filter(v=>v!==null && v!==undefined).length; }
+function sum(m){ return m.reduce((a,v)=>a+(v==null?0:v),0); }
+function firstEmpty(m){ const i=m.findIndex(v=>v==null); return i<0?0:i; }
+function pct(mk,att){ return att? mk/att*100 : null; }
+function fmtPct(p){ return p==null ? "–" : Math.round(p)+"%"; }
+
+function recordsIn(fromDate){ // fromDate inclusive, or null = all
+  return [...S.sets.values()].filter(r=>!fromDate || r.date>=fromDate);
+}
+function spotStats(recs){
+  const out = Array.from({length:SPOTS},()=>({m:0,a:0}));
+  recs.forEach(r=>r.makes.forEach((v,i)=>{ if(v!=null){ out[i].m+=v; out[i].a+=SHOTS; } }));
+  return out.map(o=>({...o,p:pct(o.m,o.a)}));
+}
+function totals(recs){ let m=0,a=0; recs.forEach(r=>r.makes.forEach(v=>{ if(v!=null){m+=v;a+=SHOTS;} })); return {m,a,p:pct(m,a)}; }
+
+// ---------- court ----------
+const CX=200, CY=34, R=150, SR=170;
+function spotXY(i){ const th=Math.PI - i*Math.PI/(SPOTS-1); return [CX+SR*Math.cos(th), CY+SR*Math.sin(th)]; }
+function courtBase(){
+  const arc = `M ${CX-R} 8 L ${CX-R} ${CY} A ${R} ${R} 0 0 0 ${CX+R} ${CY} L ${CX+R} 8`;
+  return `<rect class="floor" x="0" y="0" width="400" height="236" rx="10"/>
+  <line class="ln" x1="6" y1="8" x2="394" y2="8"/>
+  <path class="ln" d="${arc}"/>
+  <rect class="ln" x="168" y="8" width="64" height="114"/>
+  <path class="ln" d="M 168 122 A 32 32 0 0 0 232 122"/>
+  <line class="ln" x1="188" y1="20" x2="212" y2="20"/>
+  <circle class="ln" cx="${CX}" cy="${CY-6}" r="7"/>`;
+}
+function heat(p, avg){
+  if(p==null) return "var(--surface)";
+  const d = Math.max(-10, Math.min(10, p-avg));          // points vs your average, capped at ±10
+  if(d<0) return `color-mix(in srgb, var(--bad) ${Math.round(-d*10)}%, var(--mid))`;
+  return `color-mix(in srgb, var(--good) ${Math.round(d*10)}%, var(--mid))`;
+}
+function courtSVG(kind, data){
+  let spots = "";
+  for(let i=0;i<SPOTS;i++){
+    const [x,y]=spotXY(i);
+    let fill, stroke, txt, tcol, r=19, label=`Spot ${i+1}, ${SPOT_NAMES[i]}`;
+    if(kind==="log"){
+      const v=data.makes[i], sel=i===S.spot;
+      fill = v==null ? "var(--surface)" : "var(--fg)";
+      tcol = v==null ? "var(--muted)" : "var(--bg)";
+      stroke = sel ? "var(--accent)" : "var(--courtline)";
+      txt = v==null ? String(i+1) : String(v);
+      if(sel) r=22;
+      label += v==null ? ", not entered" : `, ${v} of 10`;
+    } else {
+      const s=data.stats[i];
+      fill = heat(s.p, data.avg); tcol="#14202b";
+      stroke = S.focusSpot===i ? "var(--fg)" : "var(--courtline)";
+      txt = s.p==null ? "–" : Math.round(s.p)+"";
+      if(s.p==null) tcol="var(--muted)";
+      label += s.p==null ? ", no shots" : `, ${Math.round(s.p)} percent on ${s.a} shots`;
+    }
+    const sw = (kind==="log" && i===S.spot) || (kind!=="log" && S.focusSpot===i) ? 4 : 2.5;
+    spots += `<g class="spot" data-spot="${i}" role="button" tabindex="0" aria-label="${label}">
+      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" style="fill:${fill};stroke:${stroke};stroke-width:${sw}"/>
+      <text x="${x.toFixed(1)}" y="${y.toFixed(1)}" style="fill:${tcol};font-size:${kind==="log"?20:17}px">${txt}</text>
+      ${kind!=="log"?`<text class="lbl" x="${x.toFixed(1)}" y="${(y+(i===0||i===9?30:31)).toFixed(1)}" style="font-size:10px;font-weight:600;fill:var(--courtline)">${i+1}</text>`:""}
+    </g>`;
+  }
+  return `<svg class="court" viewBox="0 0 400 236" role="group" aria-label="Three-point arc with 10 spots">${courtBase()}${spots}</svg>`;
+}
+
+// ---------- views ----------
+const $view = document.getElementById("view");
+function setStatus(t){ document.getElementById("status").textContent=t; }
+
+function render(){
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-current", b.dataset.tab===S.tab?"page":"false"));
+  if(S.tab==="log") renderLog(); else if(S.tab==="progress") renderProgress(); else renderHistory();
+}
+
+function renderLog(){
+  const rec = current();
+  const n = filled(rec.makes), mk = sum(rec.makes);
+  const other = S.sets.get(idFor(S.date, S.setNo===1?2:1));
+  const s1 = S.sets.get(idFor(S.date,1)), s2 = S.sets.get(idFor(S.date,2));
+  const lab = r => r ? `${sum(r.makes)} / ${filled(r.makes)*SHOTS}` : "Not started";
+  const complete = n===SPOTS;
+  let doneBox = "";
+  if(complete){
+    const vals = rec.makes.map((v,i)=>({v,i}));
+    const best = vals.reduce((a,b)=>b.v>a.v?b:a), worst = vals.reduce((a,b)=>b.v<a.v?b:a);
+    doneBox = `<div class="done" role="status">
+      <span class="small" style="opacity:.75">Set ${S.setNo} complete</span>
+      <span class="num">${mk} / 100</span>
+      <span class="small">Best: spot ${best.i+1} (${best.v}/10). Toughest: spot ${worst.i+1} (${worst.v}/10).</span>
+    </div>`;
+  }
+  let pad = "";
+  for(let k=0;k<=10;k++) pad += `<button data-n="${k}" class="${rec.makes[S.spot]===k?"on":""}" aria-label="${k} makes">${k}</button>`;
+  pad += `<button class="clear" data-n="clear">Clear</button>`;
+  $view.innerHTML = `
+  <section class="panel">
+    <div class="row">
+      <button class="iconbtn" id="prevDay" aria-label="Previous day">‹</button>
+      <div class="datebox"><span class="d">${nice(S.date)}</span>
+        <input type="date" id="datePick" value="${S.date}" max="${todayStr()}" aria-label="Pick a date"></div>
+      <button class="iconbtn" id="nextDay" aria-label="Next day" ${S.date>=todayStr()?"disabled style='opacity:.35'":""}>›</button>
+    </div>
+    <div class="seg" role="group" aria-label="Which set">
+      <button id="set1" aria-pressed="${S.setNo===1}">Set 1<small>${lab(s1)}</small></button>
+      <button id="set2" aria-pressed="${S.setNo===2}">Set 2<small>${lab(s2)}</small></button>
+    </div>
+  </section>
+  <section class="panel">
+    ${courtSVG("log", rec)}
+    <div class="tally">
+      <span class="big num">${mk}<span class="muted" style="font-size:20px"> / ${n*SHOTS}</span></span>
+      <span class="sub">${n}/10 spots · ${n?Math.round(mk/(n*SHOTS)*100)+"%":"no shots yet"}</span>
+    </div>
+  </section>
+  ${doneBox}
+  <section class="panel">
+    <div class="prompt">Spot <b>${S.spot+1}</b> · ${SPOT_NAMES[S.spot]} <span class="muted small" style="text-transform:none;letter-spacing:0;font-family:var(--body);font-weight:400">makes out of 10</span></div>
+    <div class="pad" id="pad">${pad}</div>
+  </section>`;
+  bindCourt(i=>{ S.spot=i; render(); });
+  document.getElementById("pad").addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    const id=idFor(S.date,S.setNo);
+    const r = S.sets.get(id) || {date:S.date,set:S.setNo,makes:Array(SPOTS).fill(null)};
+    r.makes = r.makes.slice();
+    if(b.dataset.n==="clear"){ r.makes[S.spot]=null; }
+    else {
+      r.makes[S.spot]=Number(b.dataset.n);
+      // advance to the next empty spot after this one
+      let nx=-1; for(let k=1;k<=SPOTS;k++){ const j=(S.spot+k)%SPOTS; if(r.makes[j]==null){ nx=j; break; } }
+      if(nx>=0) S.spot=nx;
+    }
+    S.sets.set(id,r); queueSave(id); render();
+  });
+  document.getElementById("set1").onclick=()=>{ S.setNo=1; S.spot=firstEmpty(current().makes); render(); };
+  document.getElementById("set2").onclick=()=>{ S.setNo=2; S.spot=firstEmpty(current().makes); render(); };
+  document.getElementById("prevDay").onclick=()=>goDate(addDays(S.date,-1));
+  document.getElementById("nextDay").onclick=()=>{ if(S.date<todayStr()) goDate(addDays(S.date,1)); };
+  document.getElementById("datePick").onchange=e=>{ if(e.target.value) goDate(e.target.value); };
+}
+function goDate(d){ S.date=d; S.setNo=1; S.spot=firstEmpty(current().makes); render(); }
+
+function bindCourt(fn){
+  $view.querySelectorAll(".spot").forEach(g=>{
+    g.addEventListener("click",()=>fn(Number(g.dataset.spot)));
+    g.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); fn(Number(g.dataset.spot)); } });
+  });
+}
+
+function renderProgress(){
+  const t=todayStr();
+  const from = S.range ? addDays(t, -(S.range-1)) : null;
+  const recs = recordsIn(from);
+  const stats = spotStats(recs), tot = totals(recs);
+  // previous window of the same length for the trend column
+  let prevStats=null;
+  if(S.range){ const pFrom=addDays(t,-(2*S.range-1)), pTo=addDays(t,-S.range);
+    prevStats = spotStats([...S.sets.values()].filter(r=>r.date>=pFrom && r.date<=pTo)); }
+
+  if(!S.sets.size){
+    $view.innerHTML = `<section class="panel">${courtSVG("progress",{stats:spotStats([]),avg:0})}
+      <div class="empty"><strong>No shots logged yet</strong>Log your first set and each spot fills in with your percentage. Red spots are below your average, green are above.</div></section>`;
+    bindCourt(()=>{}); return;
+  }
+
+  const avg = tot.p ?? 0;
+  // focus list: weakest spots with enough shots to mean something
+  const MIN = 50;
+  const ranked = stats.map((s,i)=>({...s,i})).filter(s=>s.a>=MIN).sort((a,b)=>a.p-b.p);
+  const focus = ranked.slice(0,3).map(s=>{
+    const se = Math.sqrt((avg/100)*(1-avg/100)/s.a)*100;     // rough standard error at your average
+    const gap = s.p-avg;
+    const tag = gap < -1.5*se ? ["bad","Clearly below avg"] : gap<0 ? ["mid","Within noise"] : ["good","At or above avg"];
+    return `<li><span class="tag num">${s.i+1}</span>
+      <span><b>${SPOT_NAMES[s.i]}</b><br><span class="small muted">${fmtPct(s.p)} on ${s.a} shots · ${gap>=0?"+":""}${gap.toFixed(0)} vs avg</span></span>
+      <span class="pill ${tag[0]}">${tag[1]}</span></li>`;
+  }).join("");
+  const thin = stats.filter(s=>s.a<MIN).length;
+
+  // set 1 vs set 2
+  const t1 = totals(recs.filter(r=>r.set===1)), t2 = totals(recs.filter(r=>r.set===2));
+
+  // table rows
+  const rows = stats.map((s,i)=>{
+    let tr="–", cls="";
+    if(prevStats && s.p!=null && prevStats[i].p!=null){ const d=s.p-prevStats[i].p; tr=(d>=0?"+":"")+d.toFixed(0); cls=d>=2?"up":d<=-2?"down":""; }
+    return `<tr data-spot="${i}" class="${S.focusSpot===i?"sel":""}"><td>${i+1} · ${SPOT_NAMES[i]}</td><td>${s.m}/${s.a}</td><td><b>${fmtPct(s.p)}</b></td><td class="${cls}">${tr}</td></tr>`;
+  }).join("");
+
+  const rangeBtn=(v,l)=>`<button data-range="${v}" aria-pressed="${S.range===v}">${l}</button>`;
+  $view.innerHTML = `
+  <div class="seg seg3" role="group" aria-label="Date range">${rangeBtn(7,"7 days")}${rangeBtn(14,"14 days")}${rangeBtn(0,"All time")}</div>
+  <section class="panel">
+    <div class="row between"><h2>Court map</h2><span class="num" style="font-size:22px;font-weight:700">${fmtPct(tot.p)} <span class="muted small" style="font-family:var(--body);font-weight:400">${tot.m}/${tot.a}</span></span></div>
+    ${tot.a ? courtSVG("progress",{stats,avg}) : `<div class="empty">No shots in this range.</div>`}
+    <div class="legend"><span>−10 pts</span><span class="bar"></span><span>+10 pts</span></div>
+    <p class="note">Colour shows each spot against your average for the range. Tap a spot to see its trend.</p>
+  </section>
+  <section class="panel">
+    <h2>Work on these</h2>
+    ${focus ? `<ul class="focus">${focus}</ul>` : `<p class="note">Need at least ${MIN} shots at a spot before ranking it. That's 5 sets.</p>`}
+    ${thin && focus ? `<p class="note">${thin} spot${thin>1?"s have":" has"} under ${MIN} shots in this range and ${thin>1?"aren't":"isn't"} ranked.</p>`:""}
+  </section>
+  <section class="panel">
+    <div class="chartcap"><h2>${S.focusSpot==null?"Daily %":"Spot "+(S.focusSpot+1)+" daily %"}</h2>
+      ${S.focusSpot!=null?`<button class="linkbtn" id="allSpots">Show all spots</button>`:""}</div>
+    ${chartSVG(S.focusSpot)}
+    <p class="note">Dots are single days. The line is your 7-day rolling average, which is the number to trust.</p>
+  </section>
+  <section class="panel">
+    <h2>Set 1 vs Set 2</h2>
+    <div class="split">
+      <div><span class="small muted">Set 1</span><span class="num">${fmtPct(t1.p)}</span><span class="small muted">${t1.m}/${t1.a}</span></div>
+      <div><span class="small muted">Set 2</span><span class="num">${fmtPct(t2.p)}</span><span class="small muted">${t2.m}/${t2.a}</span></div>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>By spot</h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Spot</th><th>Makes</th><th>%</th><th>${S.range?"vs prev "+S.range+"d":"Trend"}</th></tr></thead>
+      <tbody id="spotRows">${rows}</tbody></table></div>
+  </section>`;
+  $view.querySelectorAll("[data-range]").forEach(b=>b.onclick=()=>{ S.range=Number(b.dataset.range); render(); });
+  bindCourt(i=>{ S.focusSpot = S.focusSpot===i?null:i; render(); });
+  document.getElementById("spotRows").addEventListener("click",e=>{ const tr=e.target.closest("tr"); if(!tr) return; const i=Number(tr.dataset.spot); S.focusSpot=S.focusSpot===i?null:i; render(); });
+  const a=document.getElementById("allSpots"); if(a) a.onclick=()=>{ S.focusSpot=null; render(); };
+}
+
+function chartSVG(spot){
+  const t=todayStr();
+  const from = S.range ? addDays(t,-(S.range-1)) : null;
+  // daily % for the window
+  const byDay = new Map();
+  S.sets.forEach(r=>{
+    r.makes.forEach((v,i)=>{ if(v==null) return; if(spot!=null && i!==spot) return;
+      const o=byDay.get(r.date)||{m:0,a:0}; o.m+=v; o.a+=SHOTS; byDay.set(r.date,o); });
+  });
+  const allDays=[...byDay.keys()].sort();
+  const days = allDays.filter(d=>!from||d>=from);
+  if(days.length<1) return `<div class="empty">No shots in this range.</div>`;
+  // rolling 7-day (calendar) average, using all history so the line starts right
+  const roll = days.map(d=>{ const lo=addDays(d,-6); let m=0,a=0; allDays.forEach(x=>{ if(x>=lo&&x<=d){ const o=byDay.get(x); m+=o.m; a+=o.a; } }); return a?m/a*100:null; });
+  const pts = days.map(d=>{ const o=byDay.get(d); return o.m/o.a*100; });
+  const vals = pts.concat(roll).filter(v=>v!=null);
+  let lo=Math.floor(Math.min(...vals)/10)*10, hi=Math.ceil(Math.max(...vals)/10)*10;
+  if(hi-lo<20){ lo=Math.max(0,lo-10); hi=Math.min(100,hi+10); } if(hi===lo) hi=lo+10;
+  const W=360,H=170,L=34,Rt=10,T=10,B=24;
+  const x0=parse(days[0]).getTime(), x1=parse(days[days.length-1]).getTime();
+  const X=d=> x1===x0 ? (L+(W-Rt))/2 : L+(parse(d).getTime()-x0)/(x1-x0)*(W-L-Rt);
+  const Y=v=> T+(hi-v)/(hi-lo)*(H-T-B);
+  let g="";
+  for(let v=lo; v<=hi; v+=10){ g+=`<line class="grid" x1="${L}" x2="${W-Rt}" y1="${Y(v)}" y2="${Y(v)}"/><text class="axis" x="${L-6}" y="${Y(v)+3}" text-anchor="end">${v}%</text>`; }
+  const dots = days.map((d,i)=>`<circle class="dot" cx="${X(d).toFixed(1)}" cy="${Y(pts[i]).toFixed(1)}" r="3"/>`).join("");
+  const line = days.map((d,i)=>`${i?"L":"M"}${X(d).toFixed(1)},${Y(roll[i]).toFixed(1)}`).join(" ");
+  const area = `${line} L${X(days[days.length-1]).toFixed(1)},${H-B} L${X(days[0]).toFixed(1)},${H-B} Z`;
+  const last = days.length-1;
+  const xl = `<text class="axis" x="${L}" y="${H-6}">${short(days[0])}</text>` + (last?`<text class="axis" x="${W-Rt}" y="${H-6}" text-anchor="end">${short(days[last])}</text>`:"");
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily shooting percentage with 7-day rolling average">${g}
+    ${days.length>1?`<path class="area" d="${area}"/>`:""}${dots}
+    ${days.length>1?`<path class="avg" d="${line}"/>`:""}
+    <circle class="end" cx="${X(days[last]).toFixed(1)}" cy="${Y(roll[last]).toFixed(1)}" r="5"/>
+    <text class="axis" x="${Math.min(X(days[last]),W-Rt-4).toFixed(1)}" y="${(Y(roll[last])-10).toFixed(1)}" text-anchor="end" style="fill:var(--accent);font-weight:600;font-size:11px">${Math.round(roll[last])}%</text>
+    ${xl}</svg>`;
+}
+
+function renderHistory(){
+  const dates = [...new Set([...S.sets.values()].map(r=>r.date))].sort().reverse();
+  if(!dates.length){ $view.innerHTML=`<section class="panel"><div class="empty"><strong>No sessions yet</strong>Each day you log shows up here with both sets. Tap a set to edit it.</div></section>${backupPanel()}`; bindBackup(); return; }
+  const cell=(d,n)=>{ const r=S.sets.get(idFor(d,n)); const f=r?filled(r.makes):0;
+    return `<button data-d="${d}" data-s="${n}" aria-label="Edit ${nice(d)} set ${n}">${r?sum(r.makes):"–"}<span class="muted">/${f?f*SHOTS:100}</span></button>`; };
+  const items = dates.map(d=>{
+    const tt=totals([1,2].map(n=>S.sets.get(idFor(d,n))).filter(Boolean));
+    return `<li><span><span class="dt">${nice(d)}</span><br><span class="small muted">${fmtPct(tt.p)} · ${tt.m}/${tt.a}</span></span>${cell(d,1)}${cell(d,2)}</li>`; }).join("");
+  $view.innerHTML = `<section class="panel"><div class="row between"><h2>Sessions</h2><span class="small muted">Set 1 · Set 2</span></div><ul class="hist">${items}</ul></section>
+  ${backupPanel()}`;
+  bindBackup();
+  $view.querySelectorAll(".hist button").forEach(b=>b.onclick=()=>{
+    S.date=b.dataset.d; S.setNo=Number(b.dataset.s); S.spot=firstEmpty(current().makes); S.tab="log"; render(); window.scrollTo(0,0);
+  });
+}
+
+
+// ---------- backup ----------
+const BK_KEY="arc-shot-chart-lastbackup";
+function lastBackup(){ try{ return Number(localStorage.getItem(BK_KEY))||0; }catch(e){ return 0; } }
+function backupPanel(){
+  const lb=lastBackup(), days=lb?Math.floor((Date.now()-lb)/86400000):null;
+  const stale = S.sets.size && (days===null || days>=7);
+  const when = lb ? (days===0?"today":days===1?"yesterday":days+" days ago") : "never";
+  return `<section class="panel">
+    <h2>Backup</h2>
+    <p class="note">Your shots are stored on this phone only. Export a backup file now and then (to iCloud Drive, Files or email) so a lost phone or cleared browser data doesn't wipe your history. Import the file to restore or move to a new phone.</p>
+    ${stale?`<p class="warn">Last backup: ${when}.</p>`:`<p class="note">Last backup: ${when}.</p>`}
+    <div class="split">
+      <button class="bk" id="exportBtn">Export backup</button>
+      <button class="bk" id="importBtn">Import backup</button>
+    </div>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <p class="note" id="bkMsg" role="status"></p>
+  </section>`;
+}
+function bindBackup(){
+  const msg=t=>{ const m=document.getElementById("bkMsg"); if(m) m.textContent=t; };
+  document.getElementById("exportBtn").onclick=async()=>{
+    const obj={app:"arc-shot-chart",version:1,exportedAt:new Date().toISOString(),sets:Object.fromEntries(S.sets)};
+    const name=`shot-chart-backup-${todayStr()}.json`;
+    const blob=new Blob([JSON.stringify(obj,null,1)],{type:"application/json"});
+    const mark=()=>{ try{ localStorage.setItem(BK_KEY,String(Date.now())); }catch(e){} };
+    try{
+      const file=new File([blob],name,{type:"application/json"});
+      if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:"Shot chart backup"}); mark(); msg("Backup shared."); render(); return; }
+    }catch(e){ if(e && e.name==="AbortError"){ msg("Export cancelled."); return; } }
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000); mark(); msg("Backup downloaded."); render();
+  };
+  const inp=document.getElementById("importFile");
+  document.getElementById("importBtn").onclick=()=>inp.click();
+  inp.onchange=async()=>{
+    const f=inp.files[0]; if(!f) return;
+    try{
+      const obj=JSON.parse(await f.text());
+      if(!obj || obj.app!=="arc-shot-chart" || typeof obj.sets!=="object") throw 0;
+      let n=0; const o=lsLoad();
+      Object.entries(obj.sets).forEach(([id,v])=>{
+        if(!/^\d{4}-\d{2}-\d{2}_[12]$/.test(id) || !v || !Array.isArray(v.makes) || v.makes.length!==SPOTS) return;
+        const makes=v.makes.map(x=> x==null?null:Math.max(0,Math.min(SHOTS,Math.round(Number(x))||0)));
+        const rec={date:id.slice(0,10),set:Number(id.slice(11)),makes}; S.sets.set(id,rec); o[id]=rec; n++;
+      });
+      lsSave(o); render(); msg(`Imported ${n} set${n===1?"":"s"}. Matching days were replaced with the backup's numbers.`);
+    }catch(e){ msg("That file isn't a Shot Chart backup. Pick the .json file you exported."); }
+    inp.value="";
+  };
+}
+
+document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>{ S.tab=b.dataset.tab; render(); window.scrollTo(0,0); });
+
+render();
+initStore();
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
+})();
+</script>
+</body>
+</html>
